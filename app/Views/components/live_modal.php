@@ -11,7 +11,7 @@
             <div class="modal-body ">
 
                 <div class="input-group">
-                    <input type="text" class="form-control form-control-lg" autocomplete="off" id="<?= $name ?>-modal-input" placeholder="'Ονομα <?= $v_name ?>" aria-label="'Ονομα <?= $v_name ?>" aria-describedby="button-addon2">
+                    <input type="text" class="form-control form-control-lg" autocomplete="off" id="<?= $name ?>-modal-input" placeholder="Περιγραφή / Barcode" aria-label="'Ονομα <?= $v_name ?>" aria-describedby="button-addon2">
                     <button class="btn btn-secondary <?= $name ?>-btn-modal-add" type="button">Εύρεση</button>
 
                 </div>
@@ -97,7 +97,7 @@
                 list.append("" +
                     "<li class='border-bottom' data-id='" + item.id + "'>" +
                     "   <div class='d-flex'>" +
-                    "   <a class='dropdown-item h5 mb-0' data-barcode='"+item.barcode+"' href='#' style='padding-top:10px!important'>"+ item.name + "</a>" +
+                    "   <a class='dropdown-item h6 mb-0' data-barcode='"+item.barcode+"' href='#' style='padding-top:5px!important'>"+ item.name + "</a>" +
                     "</div>" +
                     "</li>");
             });

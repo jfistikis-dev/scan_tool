@@ -28,6 +28,7 @@ class SuppliesController extends BaseController
         $data['suppliers']  = ( new SupplierModel() )->select(["id", "name"])->orderBy("name", "ASC")->findAll();
         $data['brands']     = ( new BrandModel() )->select(["id", "name"])->orderBy("name", "ASC")->findAll();
         $data['m_units']    = ( new MeasuringUnitModel() )->select(["id", "name"])->orderBy("name", "ASC")->findAll();
+        $data['products']   = ( new ProductModel() )->orderBy("description", "ASC")->findAll();
         $data['title']      = "scan-ME :: Αγορά / Προσθηκη προϊόντος";
         
         return view('suppliesMainScreen', $data);

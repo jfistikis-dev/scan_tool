@@ -2,6 +2,9 @@
     <!-- Barcode -->
     <div class="input-group w-100 <?= $name ?>-input-div" >
         <button class="btn btn-secondary input-group-text fs-5" type="button" data-bs-toggle="modal" data-bs-target="#barcodeModal" ><i class="bi bi-upc-scan p-1"></i></button>
+        <?php if (isset($add_product_popup)) : ?>
+            <button class="btn btn-secondary input-group-text fs-5 btn-product-list" type="button"  ><i class="bi bi-search p-1"></i></button>
+        <?php endif; ?>
         <input type="input" class="form-control only-number" id="<?= $name ?>" name = "<?= $name ?>" placeholder="barcode" >
         <button class="btn btn-outline-secondary btn-delete-barcode" type="button"><i class="bi bi-arrow-left"></i></button>
     </div>
@@ -14,6 +17,26 @@
         </button>
     </div> -->
 </div>
+
+<!-- product list -->
+<?php if (isset($add_product_popup)) : ?>
+    <div class="col-6">
+        <?= view('/components/live_modal', [
+            'button'        => 'btn-product-list',
+            'name'          => 'description', 
+            'v_name'        => 'Προϊόν',
+            'v_name_plural' => 'Προϊόντα',      
+            'rest_url'      => 'products/ajaxProductList', // search, sort, delete, insert
+            'rest_actions'  => [
+                'sort'      => 'sort',
+                'search'    => '', 
+                ],
+            'items'         => $products ,
+            
+            ]) ?>
+    </div>
+
+<?php endif; ?>
 
 
 <script type="module">
@@ -42,6 +65,9 @@
         });
     });
 </script>
+
+
+
 
 
 

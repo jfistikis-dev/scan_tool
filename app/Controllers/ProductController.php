@@ -165,6 +165,8 @@ class ProductController extends BaseController
         $sheet->setCellValue('G1', 'Ποσό αναπ/λιας');
         $sheet->setCellValue('H1', 'Τιμή αγοράς');
         $sheet->setCellValue('I1', 'Τιμή πώλησης');
+        $sheet->setCellValue('J1', 'Κόστος Αποθ/τος');
+
 
         $rowNum = 2;
         foreach ($rows as $r) {
@@ -177,12 +179,13 @@ class ProductController extends BaseController
             $sheet->setCellValue("G{$rowNum}", $r['reorder_quantity']);
             $sheet->setCellValue("H{$rowNum}", $r['buying_price']);
             $sheet->setCellValue("I{$rowNum}", $r['selling_price']);
+             $sheet->setCellValue("J{$rowNum}", number_format( $r['selling_price'] * $r['stock'], 2, '.', ',') );
             $rowNum++;
         }
 
         $writer = new Xlsx($spreadsheet);
 
-        $filename = 'people_export_' . date('Ymd_His') . '.xlsx';
+        $filename = 'product_export_' . date('Ymd_His') . '.xlsx';
 
         // send to browser
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -335,7 +338,7 @@ class ProductController extends BaseController
         
         $items =  $model->findAll();
         if ( $first_value) {
-            $items =  $model->like($first_key,  $first_value)->findAll();
+            $items =  $model->like('description',  $first_value)->OrLike('barcode', $first_value)->findAll();
         }
               
 

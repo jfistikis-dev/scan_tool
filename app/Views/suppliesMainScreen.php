@@ -55,7 +55,10 @@
                 <!-- Barcode & Textcode -->
                 <div class="row mb-3 mt-2">
                     <div class="col-12">
-                        <?= view('/components/input_barcode', ['name'=> 'barcode']) ?>
+                        <?= view('/components/input_barcode', [
+                            'name'=> 'barcode',
+                            'add_product_popup'=> true
+                        ]) ?>
                     </div>  
                 </div>
                 
@@ -266,6 +269,8 @@
         </div>
 
     </div>
+
+   
     
     <!-- Toast messages -->
 	<?= $this->include('common/toast') ?>
@@ -457,26 +462,17 @@
         let barcode = $(this).val();
         if ( barcode === '' ) return;
         
-
-        $.ajax({
-            url: "<?= base_url('products/ajaxBarcodeSearch/') ?>" + barcode,
-            method: "get",
-            dataType: "json",
-
-            success: function(serverData) {
-                __clearProductLogs ();
-
-                if ( serverData.data != "" && serverData.data != null ) { 
-                    __fillProductValues ( serverData.data ); 
-                    __renderProductLogsFromProductData ( serverData );
-                }
-                else { 
-                    __clearProductValues ( ); 
-                }
-            }
-        });
+        __getProductFromServer (barcode )
+       
         
     });
+
+    $("body").on("click", "#description-modal ul>li>div>a", async function () {
+        __clearProductValues ();
+       await __getProductFromServer ( $(this).attr('data-barcode') );
+       $("input[name='barcode']").val (  $(this).attr('data-barcode') );
+        $("#description-modal").modal("hide");
+    })
 
     function __fillProductValues ( product ) {
         //console.log ( product );
@@ -516,6 +512,26 @@
        
     }
 
+    async function __getProductFromServer (barcode ) {
+        
+        await $.ajax({
+            url: "<?= base_url('products/ajaxBarcodeSearch/') ?>" + barcode,
+            method: "get",
+            dataType: "json",
+
+            success: function(serverData) {
+                __clearProductLogs ();
+
+                if ( serverData.data != "" && serverData.data != null ) { 
+                    __fillProductValues ( serverData.data ); 
+                    __renderProductLogsFromProductData ( serverData );
+                }
+                else { 
+                    __clearProductValues ( ); 
+                }
+            }
+        });
+    }
     
 </script>
 
