@@ -11,6 +11,10 @@ class SalesController extends BaseController
 {
 	public function index(): string   {
         $data['title'] = "scan-ME :: Ταμείο / Πωλήσεις προϊόντων";
+        $productModel       = new ProductModel();
+
+        $data['products'] = $productModel->select('*, description AS name')->findAll();
+        
 	    return view('salesMainScreen', $data);
 	}
 

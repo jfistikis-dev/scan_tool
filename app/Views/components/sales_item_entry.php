@@ -19,7 +19,7 @@
                     <div class='col-md-8'>
                         <div class='card-title'>
                             <div class='fs-5'><?= $item['description'] ?></div>
-                            <div class='fs-7'>ΑΠΟΘΕΜΑ :: <span class='apothema-num text-<?= $color ?>'><?= $item['stock'] ?> <?= $item['measuring_name'] ?></span></div>                                   
+                            <div class='fs-7'>ΑΠΟΘΕΜΑ :: <span class='apothema-num text-<?= $color ?>'><?= number_format ( $item['stock'], 2, ',', '.')  ?> <?= $item['measuring_name'] ?></span></div>                                   
                         </div>
                         
                         <?= view('components/input_number', [

@@ -174,9 +174,14 @@ ul a.dropdown-item:active { color: #1e2125; background-color : #fff; }
 
 .list-group.basket>.basket-item { cursor: pointer; }
 .list-group.basket>.basket-item:hover { background-color : #448dfa; color:white; }
-.list-group.basket>.basket-item:hover .text-secondary.apothema-num { color: white !important; font-weight:bold;}
+.list-group.basket>.basket-item:hover .apothema-num { color: white !important; font-weight:bold;}
 .fs-7 { font-size: 0.75rem; }
 
+
+.btn-add-item-to-basket { background-color : white; color:#448dfa; }
+.btn-add-item-to-basket:hover { 
+  background-color : #448dfa; color:white;
+}
 /*
  * DataTable
  */
@@ -286,5 +291,19 @@ ul a.dropdown-item:active { color: #1e2125; background-color : #fff; }
 }
 
 div:where(.swal2-container) div:where(.swal2-popup) { font-size: 0.8rem !important; }
+
+
+.smallBtn{
+  width: 28px;
+  height: 28px;
+  margin-right:8px;
+  display: inline-block;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: middle;
+  padding: 0px !important;
+
+}
+
 
 /* -- endof-Display excel upload area -- */

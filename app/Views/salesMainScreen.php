@@ -24,8 +24,8 @@
 
                             <div class="card mb-3 list-group-item  p-2 add-basket-item" style="border-style: dashed">
 
-                                <div class="card-body text-center bg-light">
-                                   <h5 class="text-muted"><i class="bi bi-cart-plus"></i> - Προσθήκη είδους</h5>
+                                <div class="card-body text-center rounded btn-add-item-to-basket" role="button">
+                                   <h5 ><i class="bi bi-cart-plus"></i> - Προσθήκη είδους</h5>
                                 </div>
                             </div>
 
@@ -84,9 +84,11 @@
                     </div>
 
                     <!-- total sum -->
-                    <div class="bg-light card col-10 offset-md-2 position-relative border-secondary" >
+                    <div class="bg-light card col-10 ms-auto position-relative border-secondary" >
 
-                        <div class="card-body float-end position-absolute top-50 end-0 translate-middle-y text-right text-secondary d-flex align-items-end flex-column">
+                        <div class="card-body position-absolute top-50 end-0 translate-middle-y text-end text-secondary
+                                    d-flex align-items-end flex-column"
+                            style="max-width: 100%; box-sizing: border-box;">
                             <h1 class="pb-0 mb-0 border-bottom"><span class="total-sum">0.00</span></h1>
 
                             <div >
@@ -109,7 +111,27 @@
         <!-- Toast messages -->
 		<?= $this->include('common/toast') ?>
 
+
     </div>
+
+
+    <!-- modal with products -->
+    <div class="col-6">
+        <?= view('/components/live_modal', [
+            'button'        => 'btn-add-item-to-basket',
+            'name'          => 'description', 
+            'v_name'        => 'Προϊόν',
+            'v_name_plural' => 'Προϊόντα',
+            'rest_url'      => 'products/ajaxProductList', // search, sort, delete, insert
+            'rest_actions'  => [
+                'sort'      => 'sort',
+                'search'    => '', 
+                ],
+            'items'         => $products ,
+            
+            ]) ?>
+    </div>
+
 
     <!-- managing basket functions  -->
     <script>
@@ -118,36 +140,35 @@
 		let _transmissionOfBarcodeStarted = false;
 
         
-        function __updateProductPriceInHtml ( $node ) {
-            
-            let barcode         = $node.parents('.basket-item').data("barcode").toString();
-            let product         = __getProductFromHtml ( barcode );
-            
-            let quantity        = SFNumberFunctions._parseNumber( product.find(".quantity-input").val() );
-            let price           = SFNumberFunctions._parseNumber( product.find(".price-input").val() );
-            
-            let productIndex    = basketProductList.findIndex( product => product.data.barcode === barcode);
+        function __updateProductPriceInHtml($node) {
 
-            basketProductList[productIndex].basketQuantity  = quantity;
-            basketProductList[productIndex].basketPrice     = price;
+            let barcode = String($node.closest('.basket-item').data('barcode'));
+            let productHtml = __getProductFromHtml(barcode);
 
-            __renderBasketDisplay ();
-           /*
-            console.log( '----------------------------' );
-            console.log( barcode );
-            console.log( quantity );
-            console.log( price );
-            console.log( productIndex );
-            console.log( basketProductList[productIndex] );
-            console.log( '----------------------------' );
-                */
-          
-            
-            
+            if (!productHtml) return;
+
+            let product = __getProductFromList(barcode);
+
+            if (!product) return;
+
+            // Read the exact quantity entered by the user
+            let quantity = SFNumberFunctions._parseNumber(  productHtml.find(".quantity-input").val()  );
+
+            let price = SFNumberFunctions._parseNumber( productHtml.find(".price-input").val() );
+
+            // REPLACE the quantity; do not increment it
+            product.basketQuantity = quantity;
+            product.basketPrice = price;
+
+            console.log (product.basketQuantity)
+
+            __renderBasketDisplay();
         }
 
         function __getProductFromList( barcode ) {
-            return basketProductList.find( product => product.data.barcode === barcode) || null;
+            return basketProductList.find(
+                        product => String(product.data.barcode) === String(barcode)
+                    ) || null;
         }
         
         function __getProductFromHtml ( barcode ) {
@@ -195,25 +216,35 @@
             __renderBasketDisplay ();
         }
 
-        function __updateProductQuantity ( product, quantity ) {
-            
-            let productIndex = basketProductList.findIndex(p => p.data.barcode === product.data.barcode);
-            // update quantity in list
-			
-			let basketQuantityNow = SFNumberFunctions._parseNumber( basketProductList[productIndex].basketQuantity );
-			
-			
-			basketQuantityNow += SFNumberFunctions._parseNumber( quantity );
-			
-            basketProductList[productIndex].basketQuantity = basketQuantityNow; 
-            
-            // update quantity in html
-            let productHtml = __getProductFromHtml( product.data.barcode );
-            productHtml.find(".quantity-input").val( SFNumberFunctions._displayNumber( basketProductList[productIndex].basketQuantity , 2 )) ;
+        function __updateProductQuantity(product, quantity = 1) {
 
-            // update basket display
-            __renderBasketDisplay ();
-            
+            let productIndex = basketProductList.findIndex(
+                p => String(p.data.barcode) === String(product.data.barcode)
+            );
+
+            if (productIndex === -1) return;
+
+            let currentQuantity = SFNumberFunctions._parseNumber(
+                basketProductList[productIndex].basketQuantity
+            );
+
+            let increment = SFNumberFunctions._parseNumber(quantity);
+
+            basketProductList[productIndex].basketQuantity =
+                currentQuantity + increment;
+
+            let productHtml = __getProductFromHtml(
+                String(product.data.barcode)
+            );
+
+            productHtml.find(".quantity-input").val(
+                SFNumberFunctions._displayNumber(
+                    basketProductList[productIndex].basketQuantity,
+                    2
+                )
+            );
+
+            __renderBasketDisplay();
         }
 
         function __renderBasketDisplay () {
@@ -264,8 +295,9 @@
     <!-- DOM event functions -->
     <script>
         // when scanned a new item  
-       $(function() {
-            let barcode = '';
+       $(document).ready(function () {
+            
+       let barcode = '';
             let timer;
 
             $(document).on('keydown', function(e) {
@@ -283,27 +315,7 @@
 					$barcodeStr = barcode.substring (1); // cut the '@'
 					_transmissionOfBarcodeStarted = false;
 					
-					$.ajax({
-						method: "POST",
-						url: "sales/ajax-sales-entry",
-						data: { barcode: $barcodeStr },
-						dataType: "json",
-						success: function (serverData) {
-							
-							__clearProductLogs ();
-							if ( serverData.data != null ) {
-								let product = __getProductFromList ( $barcodeStr );
-								
-								product != null ? __updateProductQuantity ( product, 1) : __addProductToBasket( serverData );
-
-								__renderProductLogsFromProductData ( serverData );
-
-							
-							} else {
-								Swal.fire({title: "Εύρεση προϊόντος", icon: "error",text: "Το προϊόν ... δεν βρέθηκε στην βάση!!."});
-							}
-						}
-					});
+					ajaxGetItemData ( $barcodeStr );
            
                     barcode = '';
                     return;
@@ -317,7 +329,7 @@
                 // Reset barcode , if no key pressed for 150ms 
                 timer = setTimeout(() => barcode = '', 100);
             });
-           
+
         });
 
         // delete an item from list ... 
@@ -345,13 +357,15 @@
         });
 
 
-		
         // change item's quantity or price
-        $(document).on( 'input', '.price-input,.quantity-input', function() { 
-			_transmissionOfBarcodeStarted ? $(this).val ( $(this).val().slice(0, -1) ) : null;
-			__updateProductPriceInHtml( $(this) );
-			
-		});
+        $(document).on("input change keyup", "input", function (e) {
+           
+           if ( this.classList.contains("quantity-input") ||  this.classList.contains("price-input") ) {
+                __updateProductPriceInHtml($(this));
+            }
+
+        });
+		
 		
 		// on setting focus... select the text!
 		$(document).on( 'focus', '.price-input,.quantity-input', function() {
@@ -372,6 +386,7 @@
         // save basket
         $("body").on( "click", ".btn-save-basket", async function () {
             
+
             await $.ajax({
                 method: "POST",
                 url: "sales",  
@@ -393,6 +408,48 @@
         $("body").on("click", ".basket>.basket-item", function (event ) {
             __ajaxGetProductLog ( $(this).data("barcode").toString() );
         });
+
+        // add new product button
+        $("body").on("click", ".basket>.basket-item", function (event){
+
+
+        })
+
+        
+        // An ITEM SELECTED from modal list 
+        $("body").on ("click", "#description-modal ul li a.dropdown-item", function () {
+            let barcode = $(this).attr('data-barcode')
+            ajaxGetItemData ( barcode  )
+        });
+
+
+        function ajaxGetItemData ( $barcodeStr ) {
+            
+            $.ajax({
+                method: "POST",
+                url: "sales/ajax-sales-entry",
+                data: { barcode: $barcodeStr },
+                dataType: "json",
+                success: function (serverData) {
+                    
+                    __clearProductLogs ();
+                    
+                    if ( serverData.data != null ) {
+                        let product = __getProductFromList ( $barcodeStr );
+                        
+                        product != null ? __updateProductQuantity ( product, 1) : __addProductToBasket( serverData );
+
+                        __renderProductLogsFromProductData ( serverData );
+
+                    
+                    } else {
+                        Swal.fire({title: "Εύρεση προϊόντος", icon: "error",text: "Το προϊόν ... δεν βρέθηκε στην βάση!!."});
+                    }
+                }
+            });
+
+
+        }
 
     </script>
 

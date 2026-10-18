@@ -58,6 +58,8 @@ $routes->post('/products/ajaxList', 'ProductController::ajaxList');
 $routes->delete('/products/(:num)', 'ProductController::destroy/$1');
 $routes->get('/products/export', 'ProductController::export');
 $routes->post('products/import', 'ProductController::import');
+$routes->get( '/products/ajaxProductList', 'ProductController::ajaxProductList'); 
+
 
 
 // ---- suppliers ---

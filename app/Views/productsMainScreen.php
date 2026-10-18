@@ -144,7 +144,11 @@
                 },
                 columns: [
                     { data: 'id' },
-                    { data: 'barcode' },
+                    { data: null, 
+                        render : function (data, type, row) {
+                            return '<button class=" btn btn-outline-secondary smallBtn pdfDownloadBarcode"><i class="bi bi-printer"></i></button>' + row.barcode ;
+                        }
+                    },
                     { data: 'description' },
                     { data: null, 
                         orderable: true,
@@ -264,6 +268,13 @@
             $('#productTable').on('click', 'tr', function(){
                 __ajaxGetProductLog ( $(this).find('td:eq(1)').text() );
             })
+
+             $('#productTable').on('click', 'tr .pdfDownloadBarcode', function(){
+                
+                
+            })
+            
+            
 
 
             // upload excel file : #

@@ -18,7 +18,7 @@ class ProductController extends BaseController
 
 
     public function ajaxBarcodeSearch ( $barcode ) {
-
+        
         $product = (new ProductModel())->getProductByBarcode( $barcode );
         
         if ( $product ) {
@@ -323,6 +323,38 @@ class ProductController extends BaseController
         }
     
 
+    }
+
+    public function ajaxProductList () {
+
+        $model = new ProductModel();
+        
+        $get = $this->request->getGet();
+        $first_key = array_key_first($get);
+        $first_value = $get[$first_key] ?? null;
+        
+        $items =  $model->findAll();
+        if ( $first_value) {
+            $items =  $model->like($first_key,  $first_value)->findAll();
+        }
+              
+
+        $data = [];
+        foreach ($items as $r) {
+            $data[] = [
+                'id'                => $r['id'],
+                'name'              => $r['description'],
+                'barcode'           => $r['barcode'],
+              
+                'description'       => $r['description'],
+                'stock'             => $r['stock'],
+                'reorder_quantity'  => $r['reorder_quantity'],
+                'buying_price'      => $r['buying_price'],
+            ];
+        }
+
+        return $this->response->setJSON( $data ); 
+        
     }
 
 }
