@@ -61,6 +61,9 @@ $routes->post('products/import', 'ProductController::import');
 $routes->get( '/products/ajaxProductList', 'ProductController::ajaxProductList'); 
 
 
+$routes->post('api/barcode/pdf', 'BarcodeController::generate');
+
+
 
 // ---- suppliers ---
 $routes->get('/suppliers', 'SupplierController::index');

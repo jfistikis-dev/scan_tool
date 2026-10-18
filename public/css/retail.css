@@ -306,4 +306,27 @@ div:where(.swal2-container) div:where(.swal2-popup) { font-size: 0.8rem !importa
 }
 
 
+/* Remove the default DataTables sorting icons */
+table.dataTable thead .dt-column-order::before,
+table.dataTable thead .dt-column-order::after {
+    content: "" !important;
+}
+
+/* Show a readable arrow for sortable columns */
+table.dataTable thead th.dt-orderable-asc .dt-column-order::before {
+    content: "▲" !important;
+    opacity: 0.5;
+}
+
+table.dataTable thead th.dt-orderable-desc .dt-column-order::after {
+    content: "▼" !important;
+    opacity: 0.5;
+}
+
+/* Highlight the active sort direction */
+table.dataTable thead th.dt-ordering-asc .dt-column-order::before,
+table.dataTable thead th.dt-ordering-desc .dt-column-order::after {
+    opacity: 1;
+}
+
 /* -- endof-Display excel upload area -- */

@@ -145,8 +145,13 @@
                 columns: [
                     { data: 'id' },
                     { data: null, 
+                         className: 'text-start',
                         render : function (data, type, row) {
-                            return '<button class=" btn btn-outline-secondary smallBtn pdfDownloadBarcode"><i class="bi bi-printer"></i></button>' + row.barcode ;
+                            const barcodeValid =  /^\d{10,13}$/.test(row.barcode);
+                            return barcodeValid ? 
+                                '<button data-barcode="'+ row.barcode +'" class="btn btn-outline-secondary smallBtn pdfDownloadBarcode"><i class="bi bi-upc-scan"></i></button>' + row.barcode :
+                                row.barcode ; 
+                           
                         }
                     },
                     { data: 'description' },
@@ -268,12 +273,80 @@
             $('#productTable').on('click', 'tr', function(){
                 __ajaxGetProductLog ( $(this).find('td:eq(1)').text() );
             })
+            
+            // download pdf with barcode..
+             $('#productTable').on('click', 'tr .pdfDownloadBarcode', async function(){
+                
+                let barcode = $(this).attr('data-barcode');
+                
+                try {
 
-             $('#productTable').on('click', 'tr .pdfDownloadBarcode', function(){
-                
-                
+                    await printBarcode( barcode  );
+                } catch (error) {
+                    alert(error.message);
+                }
             })
             
+            async function printBarcode(number) {
+
+                // Open the window immediately from the user's click
+                // to reduce the risk of popup blocking.
+                const printWindow = window.open('', '_blank');
+                const bu = '<?= site_url("") ?>';
+                const barcodeValid = typeof number === "string" && /^\d{10,13}$/.test(number);
+
+                if (!barcodeValid) {
+                    throw new Error('Barcode must contain 10-13 digits.');
+                }
+
+                if (!printWindow) {
+                    throw new Error('Please allow pop-ups for this site.');
+                }
+
+               
+                try {
+                    printWindow.document.write( '<p>Generating barcode PDF...</p>');
+                    printWindow.document.close();
+
+                    const response = await fetch( bu + '/api/barcode/pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ number: number })
+                    });
+
+                    if (!response.ok) {
+                        let message = 'PDF generation failed';
+
+                        try {
+                            const result = await response.json();
+                            message = result.error || message;
+                        } catch {}
+
+                        throw new Error(message);
+                    }
+
+                    const blob = await response.blob();
+                    const pdfUrl = URL.createObjectURL(blob);
+
+                    printWindow.location.href = pdfUrl;
+
+                    // Release the temporary browser URL after the
+                    // document has had time to load.
+                    printWindow.addEventListener('pagehide', () => {
+                        URL.revokeObjectURL(pdfUrl);
+                    }, { once: true });
+
+                    return true;
+                } catch (error) {
+                    if (!printWindow.closed) {
+                        printWindow.close();
+                    }
+
+                    throw error;
+                }
+            }
+
+
             
 
 
