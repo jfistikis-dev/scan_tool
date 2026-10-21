@@ -109,15 +109,27 @@ class BarcodeController extends BaseController
 
 
             // Create the PDF.
-            $pdf = new FPDF('P', 'mm', 'A4');
+            // FPDF core fonts (Arial...) have no Greek glyphs, so we use DejaVu Sans
+            // generated for cp1253 (app/ThirdParty/fpdf-fonts) and convert the UTF-8 text to cp1253.
+            $pdf = new class('P', 'mm', 'A4') extends FPDF {
+                public function __construct(...$args) {
+                    parent::__construct(...$args);
+                    $this->fontpath = APPPATH . 'ThirdParty/fpdf-fonts/';
+                }
+            };
+            $pdf->AddFont('DejaVu', '',  'DejaVuSans.php');
+            $pdf->AddFont('DejaVu', 'B', 'DejaVuSans-Bold.php');
+
             $pdf->SetMargins(15, 15, 15);
             $pdf->SetAutoPageBreak(false);
             $pdf->AddPage();
 
-            $pdf->SetFont('Arial', 'B', 18);
+            $description = iconv('UTF-8', 'windows-1253//TRANSLIT', $description) ?: $description;
+
+            $pdf->SetFont('DejaVu', 'B', 18);
             $pdf->Cell( 0, 12, $description, 0, 1, 'C');
 
-            $pdf->SetFont('Arial', '', 14);
+            $pdf->SetFont('DejaVu', '', 14);
 
             $pdf->Cell(0, 10, strlen($number) === 13 ? $ean13 : $number, 0, 1, 'C');
 
@@ -125,7 +137,7 @@ class BarcodeController extends BaseController
             $pdf->Image( $tempFile, 45, 55, 120, 0, 'PNG');
 
             $pdf->SetY(90);
-            $pdf->SetFont('Arial', '', 12);
+            $pdf->SetFont('DejaVu', '', 12);
             $pdf->Cell( 0, 10, $ean13, 0, 1, 'C');
 
             // Generate PDF bytes in memory.
