@@ -42,6 +42,10 @@
 
     <script src="<?= base_url("js/sweetalert2.all.js") ?>"></script>
 
+    <!-- Calendar -->
+    <link rel="stylesheet"  href="https://code.jquery.com/ui/1.14.2/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.14.2/jquery-ui.min.js"></script>
+
 </head>
  
  

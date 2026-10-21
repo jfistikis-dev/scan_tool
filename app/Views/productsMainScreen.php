@@ -29,72 +29,239 @@
             <!-- MAIN PANEL -->
             <div class="col-md-8 " >
                 <div class="card mt-3 h-100 mh-100" > 
-                    <div class="card-body" >
-                        <div class="row mb-3">
-                            <div class="col-md-8 d-flex align-items-center col-sm-12" >
-                                <div class="input-group">
-                                    <input type="text" id="searchName" class="form-control" placeholder="Εύρεση από περιγραφής...">
-                                    <button id="btnSearch" class="btn btn-primary btn-medium">Αναζήτηση</button>
-                                    <button id="btnClear" class="btn btn-outline-secondary btn-medium">Καθάρισμός</button>
-                                </div>
-                            </div>
-                            <div class="col-md-4 text-end d-flex flex-column align-items-end col-sm-12">
+                   
+                    <div class="card-body">
 
-                                <a id="exportBtn" class="btn btn-success btn-medium mb-2"  href="#">Export to Excel</a>
-                                <a id="importBtn" class="btn btn-info btn-medium text-white"  href="#">Import from Excel</a>
-                            </div>
-                                    
-                        </div>
-                        <div clas="row">
-                            <div class="col-md-12">
-                                <!-- Import upload area  -->
-                                
-                                <div id="importUploadArea">
-                                    <div class="card border-primary">
-                                        <div class="card-header bg-primary text-white">
-                                            <h6 class="mb-0"><i class="fas fa-upload"></i> Εισαγωγή Αρχείου Excel</h6>
-                                        </div>
-                                        <div class="card-body text-center p-0" id="dropZone">
-                                            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                                            <p class="lead">Σύρετε και αποθέστε το αρχείο Excel εδώ</p>
-                                            <p class="text-muted">ή κάντε κλικ για επιλογή αρχείου</p>
-                                            <input type="file" id="excelFile" accept=".xlsx,.xls" class="d-none">
-                                            <button type="button" id="browseFile" class="btn btn-outline-primary mt-2">
-                                                <i class="fas fa-search"></i> Περιήγηση
+                        <!-- Tabs -->
+                        <ul class="nav nav-tabs mb-3" id="productSearchTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active"
+                                        id="text-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#textSearchPane"
+                                        type="button"
+                                        role="tab">
+                                    <i class="bi bi-search me-1"></i>
+                                    Αναζήτηση προϊόντων
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link"
+                                        id="date-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#dateSearchPane"
+                                        type="button"
+                                        role="tab">
+                                    <i class="bi bi-calendar-range me-1"></i>
+                                    Αναζήτηση βάσει ημερομηνίας
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="productSearchTabContent">
+
+                            <!-- TAB 1: Existing text search -->
+                            <div class="tab-pane fade show active"
+                                id="textSearchPane"
+                                role="tabpanel">
+
+                                <div class="row mb-3 g-2">
+                                    <div class="col-md-8 col-sm-12">
+                                        <div class="input-group">
+                                            <input type="text"
+                                                id="searchName"
+                                                class="form-control"
+                                                placeholder="Εύρεση από περιγραφή...">
+
+                                            <button id="btnSearch"
+                                                    type="button"
+                                                    class="btn btn-primary">
+                                                <i class="bi bi-search"></i>
+                                            </button>
+
+                                            <button id="btnClear"
+                                                    type="button"
+                                                    class="btn btn-outline-danger">
+                                                x
                                             </button>
                                         </div>
-                                        <div class="card-footer">
-                                            <div id="uploadProgress" class="d-none">
-                                                <div class="progress">
-                                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                                        role="progressbar" style="width: 0%"></div>
+                                    </div>
+
+                                    <div class="col-md-4 col-sm-12 d-flex justify-content-md-end gap-2">
+                                        <a id="exportBtn"
+                                        class="btn btn-success"
+                                        href="#">
+                                            <i class="bi bi-download me-1"></i>
+                                            Εξαγωγή
+                                        </a>
+
+                                        <button id="importBtn"
+                                                type="button"
+                                                class="btn btn-info text-white">
+                                            <i class="bi bi-upload me-1"></i>
+                                            Εισαγωγή
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Existing import area -->
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div id="importUploadArea">
+                                            <div class="card border-primary">
+                                                <div class="card-header bg-primary text-white">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-upload"></i>
+                                                        Εισαγωγή Αρχείου Excel
+                                                    </h6>
                                                 </div>
-                                                <p class="text-center mt-2 mb-0" id="progressText">Ανέβασμα αρχείου...</p>
+
+                                                <div class="card-body text-center p-3"
+                                                    id="dropZone">
+                                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                                    <p class="lead">
+                                                        Σύρετε και αποθέστε το αρχείο Excel εδώ
+                                                    </p>
+                                                    <p class="text-muted">
+                                                        ή κάντε κλικ για επιλογή αρχείου
+                                                    </p>
+
+                                                    <input type="file"
+                                                        id="excelFile"
+                                                        accept=".xlsx,.xls"
+                                                        class="d-none">
+
+                                                    <button type="button"
+                                                            id="browseFile"
+                                                            class="btn btn-outline-primary mt-2">
+                                                        <i class="fas fa-search"></i>
+                                                        Περιήγηση
+                                                    </button>
+                                                </div>
+
+                                                <div class="card-footer">
+                                                    <div id="uploadProgress" class="d-none">
+                                                        <div class="progress">
+                                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                                role="progressbar"
+                                                                style="width: 0%">
+                                                            </div>
+                                                        </div>
+                                                        <p class="text-center mt-2 mb-0"
+                                                        id="progressText">
+                                                            Ανέβασμα αρχείου...
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
+                                <hr>
+
+                                <!-- Existing product table -->
+                                <div class="table-responsive">
+                                    <table id="productTable"
+                                        class="table display mb-2 fs-7"
+                                        style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Barcode</th>
+                                                <th>Περιγραφή</th>
+                                                <th>Στοκ</th>
+                                                <th>Μ.Μέτρησης</th>
+                                                <th>Ποσ. αναπ/λιας</th>
+                                                <th>Τιμή αγοράς</th>
+                                                <th>Ενέργειες</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+
                             </div>
-                            
+
+                            <!-- TAB 2: Date search -->
+                            <div class="tab-pane fade"
+                                id="dateSearchPane"
+                                role="tabpanel">
+
+                                <div class="row g-3 align-items-end mb-3">
+
+                                    <div class="col-md-3 col-sm-12">
+                                        <?= view("components/input_date", [
+                                            'placeholder'    => "Ημερ/νια από ...",
+                                            'name'           => 'from_date',
+                                            'add_delete_btn' => true,
+                                            'class'          => 'pe-2'
+                                        ]) ?>
+                                    </div>
+
+                                    <div class="col-md-3 col-sm-12">
+                                        <?= view("components/input_date", [
+                                            'placeholder'    => "Ημερ/νια έως ...",
+                                            'name'           => 'to_date',
+                                            'add_delete_btn' => true,
+                                            'class'          => 'pe-2'
+                                        ]) ?>
+                                    </div>
+                                    
+                                    <div class="form-check col-md-2 col-sm-12 mb-2">
+                                        <input class="form-check-input" type="checkbox" name="groupByProduct" id="groupByProduct">
+                                        <label class="form-check-label" for="groupByProduct">
+                                           Ομαδοποίηση
+                                        </label>
+                                    </div>
+
+                                    <div class="col-md-4 col-sm-12 d-flex gap-2">
+                                        <button type="button"
+                                                id="btnDateSearch"
+                                                class="btn btn-primary">
+                                            <i class="bi bi-search me-1"></i>
+                                            Αναζήτηση
+                                        </button>
+
+                                        <a href="#"
+                                        id="exportDateBtn"
+                                        class="btn btn-success">
+                                            <i class="bi bi-download me-1"></i>
+                                            Εξαγωγή
+                                        </a>
+                                    </div>
+
+                                </div>
+                              
+                                <hr>
+
+                                <!-- Independent date-filtered table -->
+                               <div class="table-responsive">
+                                    <table id="dateProductTable"
+                                        class="table display table-striped table-hover mb-2 fs-7"
+                                        style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Ημερομηνία</th>
+                                                <th>Προϊόν</th>
+                                                <th>Αρχικό απόθεμα</th>
+                                                <th>Ποσότητα</th>
+                                                <th>Τελικό απόθεμα</th>
+                                                <th>Τιμή μονάδας</th>
+                                                <th>Αξία συναλλαγής</th>
+                                                <th>Τύπος</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+
                         </div>
-                        <hr/>
-                        <table id="productTable" class="table table-responsive display mb-2 fs-7" style="width:100%">
-                            <thead>
-                                <tr>
-                                    <th data-data="id">ID</th>
-                                    <th data-data="barcode">Barcode</th>
-                                    <th data-data="description">Περιγραφή</th>
-                                    <th data-data="stock">Στοκ</th>
-                                    <th data-data="measuring_unit">Μ.Μέτρησης</th>
-                                    <th data-data="reorder_quantity">Ποσ. αναπ/λιας</th>
-                                    <th data-data="buying_price">Τιμή αγοράς</th>
-                                    <th data-data="actions">Ενέργειες</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>		
+                    </div>
+	
                 </div>
             </div>
             <!-- RIGHT PANEL -->
@@ -518,6 +685,185 @@
 
     </script>
 
+
+
+    <script>
+        
+    /*
+    * TAB 2: Independent date-filtered DataTable
+    *
+    * Expected backend parameters:
+    *   from_date
+    *   to_date
+    *
+    * The endpoint must return the same DataTables JSON structure
+    * as ajaxList, with compatible row fields.
+    */
+
+    
+    var dateTable = $('#dateProductTable').DataTable({
+        serverSide: true,
+        processing: true,
+        searching: false,
+        deferLoading: 0,
+
+        ajax: {
+            url: '<?= base_url('/products/ajaxListByDate') ?>',
+            type: 'POST',
+            data: function(d) {
+                d.from_date         = $('[name="from_date"]').val();
+                d.to_date           = $('[name="to_date"]').val();
+                d.groupByProduct = $('[name="groupByProduct"]').is(':checked');
+            }
+        },
+
+        columns: [
+            { data: 'id' },
+
+            {
+                data: 'created_at',
+                render: function(data, type, row) {
+                    if (!data) return '';
+
+                    // Keep original value for sorting and DataTables operations.
+                    if (type !== 'display') return data;
+
+                    const parts = data.split(' ');
+                    const dateParts = parts[0].split('-');
+
+                    if (dateParts.length !== 3) return data;
+
+                    const formattedDate =
+                        dateParts[2] + '-' +
+                        dateParts[1] + '-' +
+                        dateParts[0];
+
+                    return formattedDate + (parts[1] ? ' ' + parts[1] : '');
+                }
+            },
+
+            { data: 'description' },
+
+            {
+                data: 'old_stock',
+                className: 'text-end',
+                render: function(data) {
+                    return SFNumberFunctions._displayNumber(data);
+                }
+            },
+
+            {
+                data: 'quantity',
+                className: 'text-end',
+                render: function(data, type, row) {
+                    const qty = SFNumberFunctions._displayNumber(data);
+
+                    if (Number(row.type_id) === 1) {
+                        return '<span class="text-success fw-bold">+' + qty + '</span>';
+                    }
+
+                    if (Number(row.type_id) === 2) {
+                        return '<span class="text-danger fw-bold">-' + qty + '</span>';
+                    }
+
+                    return qty;
+                }
+            },
+
+            {
+                data: 'new_stock',
+                className: 'text-end',
+                render: function(data) {
+                    return SFNumberFunctions._displayNumber(data);
+                }
+            },
+
+            {
+                data: 'unit_price',
+                className: 'text-end',
+                render: function(data) {
+                    return SFNumberFunctions._displayNumber(data);
+                }
+            },
+
+            {
+                data: 'transaction_value',
+                className: 'text-end',
+                render: function(data) {
+                    return SFNumberFunctions._displayNumber(data);
+                }
+            },
+
+            {
+                data: 'type_id',
+                render: function(data) {
+                    if (Number(data) === 1) {
+                        return '<span class="badge bg-success">Προσθήκη</span>';
+                    }
+
+                    if (Number(data) === 2) {
+                        return '<span class="badge bg-danger">Αφαίρεση</span>';
+                    }
+
+                    return '<span class="badge bg-secondary">Άλλο</span>';
+                }
+            }
+        ],
+
+        pageLength: 10,
+        lengthMenu: [10, 25, 50, 100],
+        order: [[1, 'desc']]
+    });
+
+
+    // Search by transaction date
+    $('#btnDateSearch').on('click', function() {
+        const fromDate = $('[name="from_date"]').val();
+        const toDate   = $('[name="to_date"]').val();
+
+        if (!fromDate || !toDate) {
+            alert('Παρακαλώ συμπληρώστε και τις δύο ημερομηνίες.');
+            return;
+        }
+
+        if (fromDate > toDate) {
+            alert('Η ημερομηνία από δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας έως.');
+            return;
+        }
+
+        dateTable.ajax.reload();
+    });
+
+
+    // Export date-filtered transactions
+    $('#exportDateBtn').on('click', function(e) {
+        e.preventDefault();
+
+        const fromDate = $('[name="from_date"]').val();
+        const toDate   = $('[name="to_date"]').val();
+
+        if (!fromDate || !toDate) {
+            alert('Παρακαλώ συμπληρώστε και τις δύο ημερομηνίες.');
+            return;
+        }
+
+        if (fromDate > toDate) {
+            alert('Η ημερομηνία από δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας έως.');
+            return;
+        }
+
+        const params = new URLSearchParams({
+            from_date: fromDate,
+            to_date: toDate
+        });
+
+        window.location.href =
+            '<?= base_url('/products/exportByDate') ?>?' + params.toString();
+    });
+
+
+
+    </script>
 
 
 <?=$this->endSection()?>

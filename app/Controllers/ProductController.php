@@ -38,8 +38,7 @@ class ProductController extends BaseController
         
     }
     
-    public function ajaxList()
-    {
+    public function ajaxList()  {
         $request = service('request');
         $post = $request->getPost();
 
@@ -131,8 +130,8 @@ class ProductController extends BaseController
     }
 
     // Export current filtered results to Excel
-    public function export()
-    {
+    public function export() {
+        
         $request = service('request');
         $search = $request->getGet('search') ?? '';
 
@@ -359,5 +358,147 @@ class ProductController extends BaseController
         return $this->response->setJSON( $data ); 
         
     }
+
+    
+    public function ajaxListByDate() {
+        
+        $request = $this->request;
+
+        $fromDate = $request->getPost('from_date');
+        $toDate   = $request->getPost('to_date');
+
+        $fromDate = $fromDate
+            ? \DateTime::createFromFormat('!d-m-Y', $fromDate)?->format('Y-m-d') . ' 00:00:00'
+            : null;
+
+        $toDate = $toDate
+            ? \DateTime::createFromFormat('!d-m-Y', $toDate)?->format('Y-m-d') . ' 00:00:00'
+            : null;
+
+
+        // Treat groupByProduct as a boolean.
+        $groupByProduct = filter_var(
+            $request->getPost('groupByProduct'),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        $draw   = (int) $request->getPost('draw');
+        $start  = max(0, (int) $request->getPost('start'));
+        $length = (int) $request->getPost('length');
+
+        $length = $length < 1 ? 10 : min($length, 500);
+
+        $db = \Config\Database::connect();
+        $transactionTable = 'product_logs';
+
+        $unitPriceSql = '
+            CASE
+                WHEN t.type_id = 1 THEN t.buying_price
+                WHEN t.type_id = 2 THEN t.selling_price
+                ELSE t.buying_price
+            END
+        ';
+
+        // Build the base query.
+        $buildQuery = function (bool $applyDates) use (
+            $db,
+            $transactionTable,
+            $unitPriceSql,
+            $fromDate,
+            $toDate
+        ) {
+            $builder = $db->table($transactionTable . ' t')
+                ->join('products p', 'p.id = t.product_id', 'left');
+
+            if ($applyDates && $fromDate && $toDate) {
+                // Include the entire final day.
+               // $endDateExclusive = date('Y-m-d 00:00:00', strtotime($toDate . ' +1 day') );
+
+                $builder->where('t.created_at >=', $fromDate)
+                        ->where('t.created_at <', $toDate);
+            }
+
+            return $builder;
+        };
+
+        // Total transaction records before date filtering.
+        $recordsTotal = $db->table($transactionTable)->countAllResults();
+
+        // Prepare the filtered query.
+        $filteredQuery = $buildQuery(true);
+
+        if ($groupByProduct) {
+            // One row per product, with quantities netted over the period.
+            $filteredQuery
+                ->select('
+                    t.product_id,
+                    p.description,
+                    SUM(t.quantity) AS quantity,
+                    SUM(t.quantity * (' . $unitPriceSql . ')) AS transaction_value,
+                    MIN(t.created_at) AS first_transaction,
+                    MAX(t.created_at) AS last_transaction
+                ', false)
+                ->whereIn ('t.type_id', ['1', '2 ']  )
+                ->groupBy('t.product_id');
+
+            // Count products represented in the selected period.
+            $countQuery = clone $filteredQuery;
+            $recordsFiltered = $db->newQuery()
+                ->fromSubquery($countQuery, 'grouped_products')
+                ->countAllResults();
+        } else {
+            // Original transaction-level event log.
+            $filteredQuery->select("
+                t.id,
+                t.type_id,
+                t.product_id,
+                t.quantity,
+                t.buying_price,
+                t.selling_price,
+                t.old_stock,
+                t.new_stock,
+                t.created_at,
+                p.description,
+                ($unitPriceSql) AS unit_price,
+                (t.quantity * ($unitPriceSql)) AS transaction_value
+            ", false);
+
+            $recordsFiltered = $buildQuery(true)->countAllResults();
+        }
+
+        // Sorting.
+        $orderColumns = [
+            0 => $groupByProduct ? 't.product_id' : 't.id',
+            1 => $groupByProduct ? 'p.description' : 't.created_at',
+            2 => 'p.description',
+            3 => 'quantity',
+            4 => 'transaction_value',
+        ];
+
+        $orderIndex = (int) ($request->getPost('order')[0]['column'] ?? 1);
+        $orderBy = $orderColumns[$orderIndex] ?? (
+            $groupByProduct ? 'p.description' : 't.created_at'
+        );
+
+        $direction = strtoupper(
+            $request->getPost('order')[0]['dir'] ?? 'DESC'
+        );
+
+        $direction = $direction === 'ASC' ? 'ASC' : 'DESC';
+
+        $rows = $filteredQuery
+            ->orderBy($orderBy, $direction)
+            ->limit($length, $start)
+            ->get()
+            ->getResultArray();
+
+        return $this->response->setJSON([
+            'draw'            => $draw,
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $rows,
+        ]);
+    }
+
 
 }

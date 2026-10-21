@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\ProductModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use FPDF;
 use Picqer\Barcode\BarcodeGeneratorPNG;
@@ -83,10 +84,7 @@ class BarcodeController extends BaseController
                  $png = $generator->getBarcode( $ean13, $generator::TYPE_EAN_13, 3, 150 );
             else $png = $generator->getBarcode( $number, $generator::TYPE_CODE_128, 3, 150 );
 
-            $tempFile = tempnam(
-                sys_get_temp_dir(),
-                'barcode_'
-            );
+            $tempFile = tempnam( sys_get_temp_dir(), 'barcode_' );
 
             if ($tempFile === false) {
                 throw new \RuntimeException(
@@ -100,6 +98,16 @@ class BarcodeController extends BaseController
                 );
             }
 
+            $product = (new ProductModel())->where('barcode', $number)->first();
+            $description = 'Product Description';
+            
+            if (is_array($product)) {
+                $description = $product['description'] ?? $description;
+            } elseif (is_object($product)) {
+                $description = $product->description ?? $description;
+            }
+
+
             // Create the PDF.
             $pdf = new FPDF('P', 'mm', 'A4');
             $pdf->SetMargins(15, 15, 15);
@@ -107,31 +115,18 @@ class BarcodeController extends BaseController
             $pdf->AddPage();
 
             $pdf->SetFont('Arial', 'B', 18);
-            $pdf->Cell( 
-                0, 12, 'Product Label', 0, 1, 'C'
-            );
+            $pdf->Cell( 0, 12, $description, 0, 1, 'C');
 
             $pdf->SetFont('Arial', '', 14);
 
-            $pdf->Cell(
-                0, 10, strlen($number) === 13 ? $ean13 : $number, 0, 1, 'C'
-            );
+            $pdf->Cell(0, 10, strlen($number) === 13 ? $ean13 : $number, 0, 1, 'C');
 
             // Embed the barcode.
-            $pdf->Image(
-                $tempFile,
-                45,
-                55,
-                120,
-                0,
-                'PNG'
-            );
+            $pdf->Image( $tempFile, 45, 55, 120, 0, 'PNG');
 
             $pdf->SetY(90);
             $pdf->SetFont('Arial', '', 12);
-            $pdf->Cell(
-                0, 10, $ean13, 0, 1, 'C'
-            );
+            $pdf->Cell( 0, 10, $ean13, 0, 1, 'C');
 
             // Generate PDF bytes in memory.
             $pdfBytes = $pdf->Output('S');
