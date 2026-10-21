@@ -364,17 +364,18 @@ class ProductController extends BaseController
         
         $request = $this->request;
 
-        $fromDate = $request->getPost('from_date');
-        $toDate   = $request->getPost('to_date');
+        // Dates arrive as dd-mm-yyyy from the datepicker.
+        $parseDate = static function ($value): ?\DateTime {
+            $date = $value ? \DateTime::createFromFormat('!d-m-Y', $value) : false;
+            return $date ?: null;
+        };
 
-        $fromDate = $fromDate
-            ? \DateTime::createFromFormat('!d-m-Y', $fromDate)?->format('Y-m-d') . ' 00:00:00'
-            : null;
+        $fromDate = $parseDate($request->getPost('from_date'));
+        $toDate   = $parseDate($request->getPost('to_date'));
 
-        $toDate = $toDate
-            ? \DateTime::createFromFormat('!d-m-Y', $toDate)?->format('Y-m-d') . ' 00:00:00'
-            : null;
-
+        // Include the whole final day: created_at < (to_date + 1 day).
+        $fromDate = $fromDate?->format('Y-m-d 00:00:00');
+        $toDate   = $toDate?->modify('+1 day')->format('Y-m-d 00:00:00');
 
         // Treat groupByProduct as a boolean.
         $groupByProduct = filter_var(
@@ -391,29 +392,23 @@ class ProductController extends BaseController
         $db = \Config\Database::connect();
         $transactionTable = 'product_logs';
 
-        $unitPriceSql = '
+        $buying  = PRODUCT_LOG_TYPE_BUYING;
+        $selling = PRODUCT_LOG_TYPE_SELLING;
+
+        $unitPriceSql = "
             CASE
-                WHEN t.type_id = 1 THEN t.buying_price
-                WHEN t.type_id = 2 THEN t.selling_price
+                WHEN t.type_id = {$buying}  THEN t.buying_price
+                WHEN t.type_id = {$selling} THEN t.selling_price
                 ELSE t.buying_price
             END
-        ';
+        ";
 
         // Build the base query.
-        $buildQuery = function (bool $applyDates) use (
-            $db,
-            $transactionTable,
-            $unitPriceSql,
-            $fromDate,
-            $toDate
-        ) {
+        $buildQuery = function () use ($db, $transactionTable, $fromDate, $toDate) {
             $builder = $db->table($transactionTable . ' t')
                 ->join('products p', 'p.id = t.product_id', 'left');
 
-            if ($applyDates && $fromDate && $toDate) {
-                // Include the entire final day.
-               // $endDateExclusive = date('Y-m-d 00:00:00', strtotime($toDate . ' +1 day') );
-
+            if ($fromDate && $toDate) {
                 $builder->where('t.created_at >=', $fromDate)
                         ->where('t.created_at <', $toDate);
             }
@@ -425,27 +420,58 @@ class ProductController extends BaseController
         $recordsTotal = $db->table($transactionTable)->countAllResults();
 
         // Prepare the filtered query.
-        $filteredQuery = $buildQuery(true);
+        $filteredQuery = $buildQuery();
 
         if ($groupByProduct) {
+            // Quantities are stored as positive numbers for both types,
+            // so additions (type 1) count as + and subtractions (type 2) as -.
+            $signSql = "CASE WHEN t.type_id = {$selling} THEN -1 ELSE 1 END";
+
+            // Stock before the first / after the last movement of the period.
+            $periodSql = '';
+            if ($fromDate && $toDate) {
+                $periodSql = ' AND l.created_at >= ' . $db->escape($fromDate)
+                           . ' AND l.created_at < '  . $db->escape($toDate);
+            }
+            $stockAtSql = static fn (string $column, string $dir) => "(
+                SELECT l.{$column}
+                FROM {$transactionTable} l
+                WHERE l.product_id = t.product_id
+                  AND l.type_id IN ({$buying}, {$selling}){$periodSql}
+                ORDER BY l.id {$dir}
+                LIMIT 1
+            )";
+
             // One row per product, with quantities netted over the period.
+            // Field names match the transaction-level rows so the same table can render them.
             $filteredQuery
-                ->select('
+                ->select("
+                    t.product_id AS id,
                     t.product_id,
                     p.description,
-                    SUM(t.quantity) AS quantity,
-                    SUM(t.quantity * (' . $unitPriceSql . ')) AS transaction_value,
+                    NULL AS type_id,
+                    1 AS is_grouped,
+                    COUNT(*) AS transactions,
                     MIN(t.created_at) AS first_transaction,
-                    MAX(t.created_at) AS last_transaction
-                ', false)
-                ->whereIn ('t.type_id', ['1', '2 ']  )
-                ->groupBy('t.product_id');
+                    MAX(t.created_at) AS created_at,
+                    SUM(CASE WHEN t.type_id = {$buying}  THEN t.quantity ELSE 0 END) AS quantity_in,
+                    SUM(CASE WHEN t.type_id = {$selling} THEN t.quantity ELSE 0 END) AS quantity_out,
+                    SUM(({$signSql}) * t.quantity) AS quantity,
+                    SUM(({$signSql}) * t.quantity * ({$unitPriceSql})) AS transaction_value,
+                    NULL AS unit_price,
+                    {$stockAtSql('old_stock', 'ASC')} AS old_stock,
+                    {$stockAtSql('new_stock', 'DESC')} AS new_stock
+                ", false)
+                ->whereIn('t.type_id', [$buying, $selling])
+                ->groupBy(['t.product_id', 'p.description']);
 
             // Count products represented in the selected period.
-            $countQuery = clone $filteredQuery;
-            $recordsFiltered = $db->newQuery()
-                ->fromSubquery($countQuery, 'grouped_products')
-                ->countAllResults();
+            $recordsFiltered = $buildQuery()
+                ->select('COUNT(DISTINCT t.product_id) AS cnt', false)
+                ->whereIn('t.type_id', [$buying, $selling])
+                ->get()
+                ->getRow()
+                ->cnt ?? 0;
         } else {
             // Original transaction-level event log.
             $filteredQuery->select("
@@ -463,22 +489,34 @@ class ProductController extends BaseController
                 (t.quantity * ($unitPriceSql)) AS transaction_value
             ", false);
 
-            $recordsFiltered = $buildQuery(true)->countAllResults();
+            $recordsFiltered = $buildQuery()->countAllResults();
         }
 
-        // Sorting.
-        $orderColumns = [
-            0 => $groupByProduct ? 't.product_id' : 't.id',
-            1 => $groupByProduct ? 'p.description' : 't.created_at',
-            2 => 'p.description',
-            3 => 'quantity',
-            4 => 'transaction_value',
-        ];
+        // Sorting: indexes follow the columns of #dateProductTable.
+        $orderColumns = $groupByProduct
+            ? [
+                0 => 't.product_id',
+                1 => 'created_at',
+                2 => 'p.description',
+                3 => 'old_stock',
+                4 => 'quantity',
+                5 => 'new_stock',
+                7 => 'transaction_value',
+            ]
+            : [
+                0 => 't.id',
+                1 => 't.created_at',
+                2 => 'p.description',
+                3 => 't.old_stock',
+                4 => 't.quantity',
+                5 => 't.new_stock',
+                6 => 'unit_price',
+                7 => 'transaction_value',
+                8 => 't.type_id',
+            ];
 
         $orderIndex = (int) ($request->getPost('order')[0]['column'] ?? 1);
-        $orderBy = $orderColumns[$orderIndex] ?? (
-            $groupByProduct ? 'p.description' : 't.created_at'
-        );
+        $orderBy    = $orderColumns[$orderIndex] ?? $orderColumns[1];
 
         $direction = strtoupper(
             $request->getPost('order')[0]['dir'] ?? 'DESC'
@@ -487,7 +525,7 @@ class ProductController extends BaseController
         $direction = $direction === 'ASC' ? 'ASC' : 'DESC';
 
         $rows = $filteredQuery
-            ->orderBy($orderBy, $direction)
+            ->orderBy($orderBy, $direction, false)
             ->limit($length, $start)
             ->get()
             ->getResultArray();
@@ -495,7 +533,7 @@ class ProductController extends BaseController
         return $this->response->setJSON([
             'draw'            => $draw,
             'recordsTotal'    => $recordsTotal,
-            'recordsFiltered' => $recordsFiltered,
+            'recordsFiltered' => (int) $recordsFiltered,
             'data'            => $rows,
         ]);
     }

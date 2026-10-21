@@ -323,7 +323,6 @@
                     },
                     { data: 'description' },
                     { data: null, 
-                        orderable: true,
                         searchable: false,
                         render: function(data, type, row){
                             return SFNumberFunctions._displayNumber(row.stock) ;
@@ -331,14 +330,12 @@
                     },
                     { data: 'measuring_unit' },
                     { data: null, 
-                        orderable: true,
                         searchable: false,
                         render: function(data, type, row){
                             return SFNumberFunctions._displayNumber(row.reorder_quantity) ;
                         }
                     },
                     { data: null, 
-                        orderable: true,
                         searchable: false,
                         render: function(data, type, row){
                             return SFNumberFunctions._displayNumber(row.buying_price) ;
@@ -756,6 +753,16 @@
                 data: 'quantity',
                 className: 'text-end',
                 render: function(data, type, row) {
+                    // Grouped rows carry a signed net quantity.
+                    if (row.is_grouped) {
+                        const net = Number(data);
+                        const qty = SFNumberFunctions._displayNumber(Math.abs(net));
+
+                        if (net > 0) return '<span class="text-success fw-bold">+' + qty + '</span>';
+                        if (net < 0) return '<span class="text-danger fw-bold">-' + qty + '</span>';
+                        return qty;
+                    }
+
                     const qty = SFNumberFunctions._displayNumber(data);
 
                     if (Number(row.type_id) === 1) {
@@ -781,7 +788,8 @@
             {
                 data: 'unit_price',
                 className: 'text-end',
-                render: function(data) {
+                render: function(data, type, row) {
+                    if (row.is_grouped) return '';
                     return SFNumberFunctions._displayNumber(data);
                 }
             },
@@ -796,7 +804,12 @@
 
             {
                 data: 'type_id',
-                render: function(data) {
+                render: function(data, type, row) {
+                    if (row.is_grouped) {
+                        return '<span class="badge bg-success me-1">+' + SFNumberFunctions._displayNumber(row.quantity_in) + '</span>' +
+                               '<span class="badge bg-danger">-' + SFNumberFunctions._displayNumber(row.quantity_out) + '</span>';
+                    }
+
                     if (Number(data) === 1) {
                         return '<span class="badge bg-success">Προσθήκη</span>';
                     }
@@ -816,6 +829,18 @@
     });
 
 
+    // dd-mm-yyyy -> yyyy-mm-dd so dates compare correctly as strings
+    function toSortableDate(value) {
+        return value.split('-').reverse().join('-');
+    }
+
+    // Re-run the search when grouping is toggled
+    $('#groupByProduct').on('change', function() {
+        if ($('[name="from_date"]').val() && $('[name="to_date"]').val()) {
+            dateTable.ajax.reload();
+        }
+    });
+
     // Search by transaction date
     $('#btnDateSearch').on('click', function() {
         const fromDate = $('[name="from_date"]').val();
@@ -826,7 +851,7 @@
             return;
         }
 
-        if (fromDate > toDate) {
+        if (toSortableDate(fromDate) > toSortableDate(toDate)) {
             alert('Η ημερομηνία από δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας έως.');
             return;
         }
@@ -847,7 +872,7 @@
             return;
         }
 
-        if (fromDate > toDate) {
+        if (toSortableDate(fromDate) > toSortableDate(toDate)) {
             alert('Η ημερομηνία από δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας έως.');
             return;
         }
