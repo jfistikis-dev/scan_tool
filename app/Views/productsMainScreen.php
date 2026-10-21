@@ -53,7 +53,7 @@
                                         type="button"
                                         role="tab">
                                     <i class="bi bi-calendar-range me-1"></i>
-                                    Αναζήτηση βάσει ημερομηνίας
+                                    Αναζήτηση βάση ημερ/ίας
                                 </button>
                             </li>
                         </ul>
@@ -88,16 +88,12 @@
                                     </div>
 
                                     <div class="col-md-4 col-sm-12 d-flex justify-content-md-end gap-2">
-                                        <a id="exportBtn"
-                                        class="btn btn-success"
-                                        href="#">
+                                        <a id="exportBtn" class="btn btn-success" href="#">
                                             <i class="bi bi-download me-1"></i>
                                             Εξαγωγή
                                         </a>
 
-                                        <button id="importBtn"
-                                                type="button"
-                                                class="btn btn-info text-white">
+                                        <button id="importBtn" type="button" class="btn btn-info text-white">
                                             <i class="bi bi-upload me-1"></i>
                                             Εισαγωγή
                                         </button>
