@@ -311,7 +311,7 @@
                 },
                 columns: [
                     { data: 'id' },
-                    { data: null, 
+                    { data: 'barcode', 
                          className: 'text-start',
                         render : function (data, type, row) {
                             const barcodeValid =  /^\d{10,13}$/.test(row.barcode);
@@ -322,20 +322,20 @@
                         }
                     },
                     { data: 'description' },
-                    { data: null, 
+                    { data: 'stock', 
                         searchable: false,
                         render: function(data, type, row){
                             return SFNumberFunctions._displayNumber(row.stock) ;
                         }
                     },
                     { data: 'measuring_unit' },
-                    { data: null, 
+                    { data: 'reorder_quantity', 
                         searchable: false,
                         render: function(data, type, row){
                             return SFNumberFunctions._displayNumber(row.reorder_quantity) ;
                         }
                     },
-                    { data: null, 
+                    { data: 'buying_price', 
                         searchable: false,
                         render: function(data, type, row){
                             return SFNumberFunctions._displayNumber(row.buying_price) ;
@@ -404,9 +404,14 @@
             // Export button
             $('#exportBtn').on('click', function(e){
                 e.preventDefault();
-                var s = $('#searchName').val();
-                var url = '<?php echo base_url() ?>/products/export' + (s ? ('?search=' + encodeURIComponent(s)) : '');
-                window.location.href = url;
+                // send the same search + ordering the table is currently using
+                var order  = table.order()[0] || [0, 'desc'];
+                var params = new URLSearchParams({
+                    search:       $('#searchName').val(),
+                    order_column: table.settings().init().columns[order[0]].data || 'id',
+                    order_dir:    order[1]
+                });
+                window.location.href = '<?php echo base_url() ?>/products/export?' + params.toString();
             });
 
             // handle delete
@@ -877,9 +882,14 @@
             return;
         }
 
+        // send the same criteria + ordering the table is currently using
+        const order = dateTable.order()[0] || [1, 'desc'];
         const params = new URLSearchParams({
-            from_date: fromDate,
-            to_date: toDate
+            from_date:      fromDate,
+            to_date:        toDate,
+            groupByProduct: $('[name="groupByProduct"]').is(':checked'),
+            order_column:   order[0],
+            order_dir:      order[1]
         });
 
         window.location.href =

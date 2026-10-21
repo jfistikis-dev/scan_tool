@@ -60,6 +60,7 @@ $routes->get('/products/export', 'ProductController::export');
 $routes->post('products/import', 'ProductController::import');
 $routes->get( '/products/ajaxProductList', 'ProductController::ajaxProductList'); 
 $routes->post( '/products/ajaxListByDate', 'ProductController::ajaxListByDate'); 
+$routes->get( '/products/exportByDate', 'ProductController::exportByDate');
 
 
 $routes->post('api/barcode/pdf', 'BarcodeController::generate');

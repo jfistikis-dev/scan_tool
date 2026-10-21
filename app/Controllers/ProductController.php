@@ -85,6 +85,8 @@ class ProductController extends BaseController
             $allowed = ['id','barcode','measuring_unit_id','description','stock','reorder_quantity','buying_price'];
             if (in_array($colName, $allowed)) {
                 $builder->orderBy($colName, $orderDir);
+            } else {
+                $builder->orderBy('id', 'desc');
             }
         } else {
             $builder->orderBy('id', 'desc');
@@ -145,11 +147,23 @@ class ProductController extends BaseController
         $builder->join('brands', 'brands.id = products.brand_id', 'left');
         
 
+        // same filter as ajaxList
         if (!empty($search)) {
-            $builder->like('name', $search);
+            $builder->groupStart()
+                    ->like('products.description', $search)
+                    ->orLike('barcode', $search)
+                    ->groupEnd();
         }
 
-        $rows = $builder->orderBy('id','desc')->get()->getResultArray();
+        // same ordering as the table
+        $orderCol = $request->getGet('order_column');
+        $orderDir = strtolower($request->getGet('order_dir') ?? '') === 'asc' ? 'asc' : 'desc';
+        $allowed  = ['id','barcode','measuring_unit_id','description','stock','reorder_quantity','buying_price'];
+        if (!in_array($orderCol, $allowed, true)) {
+            $orderCol = 'id';
+        }
+
+        $rows = $builder->orderBy('products.' . $orderCol, $orderDir)->get()->getResultArray();
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -361,8 +375,111 @@ class ProductController extends BaseController
 
     
     public function ajaxListByDate() {
-        
+
         $request = $this->request;
+
+        $draw   = (int) $request->getPost('draw');
+        $start  = max(0, (int) $request->getPost('start'));
+        $length = (int) $request->getPost('length');
+
+        $length = $length < 1 ? 10 : min($length, 500);
+
+        [$filteredQuery, $recordsTotal, $recordsFiltered] = $this->buildDateLogQuery(
+            $request->getPost('from_date'),
+            $request->getPost('to_date'),
+            filter_var($request->getPost('groupByProduct'), FILTER_VALIDATE_BOOLEAN),
+            (int) ($request->getPost('order')[0]['column'] ?? 1),
+            $request->getPost('order')[0]['dir'] ?? 'DESC'
+        );
+
+        $rows = $filteredQuery
+            ->limit($length, $start)
+            ->get()
+            ->getResultArray();
+
+        return $this->response->setJSON([
+            'draw'            => $draw,
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => (int) $recordsFiltered,
+            'data'            => $rows,
+        ]);
+    }
+
+    // Export the date-filtered table (same criteria, grouping and ordering) to Excel
+    public function exportByDate() {
+
+        $request = $this->request;
+
+        $groupByProduct = filter_var($request->getGet('groupByProduct'), FILTER_VALIDATE_BOOLEAN);
+
+        [$query] = $this->buildDateLogQuery(
+            $request->getGet('from_date'),
+            $request->getGet('to_date'),
+            $groupByProduct,
+            (int) ($request->getGet('order_column') ?? 1),
+            $request->getGet('order_dir') ?? 'DESC'
+        );
+
+        $rows = $query->get()->getResultArray();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // header : same columns as #dateProductTable
+        $headers = ['ID', 'Ημερομηνία', 'Προϊόν', 'Αρχικό απόθεμα', 'Ποσότητα', 'Τελικό απόθεμα', 'Τιμή μονάδας', 'Αξία συναλλαγής', 'Τύπος'];
+        $sheet->fromArray($headers, null, 'A1');
+
+        $rowNum = 2;
+        foreach ($rows as $r) {
+
+            if ($groupByProduct) {
+                $quantity  = (float) $r['quantity'];   // already signed (net)
+                $unitPrice = '';
+                $type      = '+' . (float) $r['quantity_in'] . ' / -' . (float) $r['quantity_out'];
+            } else {
+                $sign      = (int) $r['type_id'] === PRODUCT_LOG_TYPE_SELLING ? -1 : 1;
+                $quantity  = $sign * (float) $r['quantity'];
+                $unitPrice = $r['unit_price'];
+                $type      = match ((int) $r['type_id']) {
+                    PRODUCT_LOG_TYPE_BUYING  => 'Προσθήκη',
+                    PRODUCT_LOG_TYPE_SELLING => 'Αφαίρεση',
+                    default                  => 'Άλλο',
+                };
+            }
+
+            $createdAt = $r['created_at'] ? date('d-m-Y H:i:s', strtotime($r['created_at'])) : '';
+
+            $sheet->setCellValue("A{$rowNum}", $r['id']);
+            $sheet->setCellValue("B{$rowNum}", $createdAt);
+            $sheet->setCellValue("C{$rowNum}", $r['description']);
+            $sheet->setCellValue("D{$rowNum}", $r['old_stock']);
+            $sheet->setCellValue("E{$rowNum}", $quantity);
+            $sheet->setCellValue("F{$rowNum}", $r['new_stock']);
+            $sheet->setCellValue("G{$rowNum}", $unitPrice);
+            $sheet->setCellValue("H{$rowNum}", $r['transaction_value']);
+            $sheet->setCellValue("I{$rowNum}", $type);
+            $rowNum++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+
+        $filename = 'product_log_export_' . date('Ymd_His') . '.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Shared query for the date tab, used by both the table (ajaxListByDate) and the Excel export (exportByDate)
+     * so they always return the same rows in the same order.
+     *
+     * Returns [ordered builder without limit, recordsTotal, recordsFiltered].
+     */
+    private function buildDateLogQuery(?string $fromInput, ?string $toInput, bool $groupByProduct, int $orderIndex, string $orderDir): array {
 
         // Dates arrive as dd-mm-yyyy from the datepicker.
         $parseDate = static function ($value): ?\DateTime {
@@ -370,24 +487,12 @@ class ProductController extends BaseController
             return $date ?: null;
         };
 
-        $fromDate = $parseDate($request->getPost('from_date'));
-        $toDate   = $parseDate($request->getPost('to_date'));
+        $fromDate = $parseDate($fromInput);
+        $toDate   = $parseDate($toInput);
 
         // Include the whole final day: created_at < (to_date + 1 day).
         $fromDate = $fromDate?->format('Y-m-d 00:00:00');
         $toDate   = $toDate?->modify('+1 day')->format('Y-m-d 00:00:00');
-
-        // Treat groupByProduct as a boolean.
-        $groupByProduct = filter_var(
-            $request->getPost('groupByProduct'),
-            FILTER_VALIDATE_BOOLEAN
-        );
-
-        $draw   = (int) $request->getPost('draw');
-        $start  = max(0, (int) $request->getPost('start'));
-        $length = (int) $request->getPost('length');
-
-        $length = $length < 1 ? 10 : min($length, 500);
 
         $db = \Config\Database::connect();
         $transactionTable = 'product_logs';
@@ -515,27 +620,12 @@ class ProductController extends BaseController
                 8 => 't.type_id',
             ];
 
-        $orderIndex = (int) ($request->getPost('order')[0]['column'] ?? 1);
-        $orderBy    = $orderColumns[$orderIndex] ?? $orderColumns[1];
+        $orderBy   = $orderColumns[$orderIndex] ?? $orderColumns[1];
+        $direction = strtoupper($orderDir) === 'ASC' ? 'ASC' : 'DESC';
 
-        $direction = strtoupper(
-            $request->getPost('order')[0]['dir'] ?? 'DESC'
-        );
+        $filteredQuery->orderBy($orderBy, $direction, false);
 
-        $direction = $direction === 'ASC' ? 'ASC' : 'DESC';
-
-        $rows = $filteredQuery
-            ->orderBy($orderBy, $direction, false)
-            ->limit($length, $start)
-            ->get()
-            ->getResultArray();
-
-        return $this->response->setJSON([
-            'draw'            => $draw,
-            'recordsTotal'    => $recordsTotal,
-            'recordsFiltered' => (int) $recordsFiltered,
-            'data'            => $rows,
-        ]);
+        return [$filteredQuery, $recordsTotal, $recordsFiltered];
     }
 
 
