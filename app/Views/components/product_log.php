@@ -11,7 +11,7 @@
 
     function __ajaxGetProductLog ( barcode ) {
             $.ajax({
-            url: "<?= $url ?>" + barcode,
+            url: "<?= $url ?>" + encodeURIComponent( barcode ),
             method: "get",
             dataType: "json",
 
@@ -67,6 +67,11 @@
                 html += __toEuropeanDate ( log_entry.created_at );    
                 html += " - ΠΩΛΗΣΗ : " ;
                 html += SFNumberFunctions._displayNumber ( log_entry.quantity ) + " " + log_entry.measuring_unit_name + " @ " + SFNumberFunctions._displayCurrency(log_entry.selling_price, 2);
+                html += '</li>';
+            }
+            else if  ( log_entry.type_id == "<?=  PRODUCT_LOG_TYPE_UPDATE ?>") {
+                html += "<li class='text-sm bg-secondary text-white px-2 py-1 rounded mb-1 opacity-75' style='font-size:0.8rem'>";
+                html += __toEuropeanDate ( log_entry.created_at ) + " - ΕΝΗΜΕΡΩΣΗ ΣΤΟΙΧΕΙΩΝ";
                 html += '</li>';
             }
             else {

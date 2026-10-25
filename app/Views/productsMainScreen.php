@@ -267,7 +267,7 @@
                 <div class="card mt-3" >
                     <div class="card-body" >
                         <?= view("components/product_log", [
-                        'url'       => base_url('products/ajaxBarcodeSearch/'),
+                        'url'       => base_url('products/ajaxBarcodeSearch?barcode='),
                         'height'    => 'calc(100vh - 350px)'
                     ]) ?>
                     </div>
@@ -817,6 +817,10 @@
 
                     if (Number(data) === 2) {
                         return '<span class="badge bg-danger">Αφαίρεση</span>';
+                    }
+
+                    if (Number(data) === <?= PRODUCT_LOG_TYPE_UPDATE ?>) {
+                        return '<span class="badge bg-secondary">Ενημέρωση</span>';
                     }
 
                     return '<span class="badge bg-secondary">Άλλο</span>';

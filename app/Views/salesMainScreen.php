@@ -63,7 +63,7 @@
             <div class="card mt-3" >
                 <div class="card-body" >
                     <?= view("components/product_log", [
-                        'url' => base_url('products/ajaxBarcodeSearch/'),
+                        'url' => base_url('products/ajaxBarcodeSearch?barcode='),
                         'height'    => 'calc(100vh - 450px)'
                     ]) ?>
                 </div>

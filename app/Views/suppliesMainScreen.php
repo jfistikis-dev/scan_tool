@@ -35,7 +35,7 @@
             <div class="card mt-2" >
                 <div class="card-body" >
                     <?= view("components/product_log", [
-                        'url' => base_url('products?barcode='),
+                        'url' => base_url('products/ajaxBarcodeSearch?barcode='),
                         'height'    => 'calc(100vh - 400px)'
                     ]) ?>
                 </div>
@@ -51,6 +51,7 @@
 
                 <?= csrf_field() ?>
                 <input type="hidden" name="stock" value="">
+                <input type="hidden" name="id" value="">
 
                 <!-- Barcode & Textcode -->
                 <div class="row mb-3 mt-2">
@@ -59,9 +60,14 @@
                             'name'=> 'barcode',
                             'add_product_popup'=> true
                         ]) ?>
-                    </div>  
+                    </div>
                 </div>
-                
+
+                <!-- Rename mode : a loaded product got a barcode that is not in the DB -->
+                <div id="renameNotice" class="alert alert-warning py-2 d-none">
+                    <i class="bi bi-exclamation-triangle"></i> Νέο barcode για «<span class="rename-description fw-bold"></span>» (ήταν <span class="rename-old-barcode fw-bold"></span>)
+                </div>
+
                 <!-- Name -->
                 <div class="row g-3 mb-3">
                     <div class="col-12 form-floating">
@@ -196,64 +202,19 @@
                 
                 <hr/>
 
-                <!-- Purchase price / Retail price -->
-                <div class="row g-3 mb-3 hide-on-raw-insert">
-                    <div class="col form-floating">
-                            <?=view('components/input_number', [
-                                'name'          => 'quantity',
-                                'placeholder'   => 'Ποσότητα/Τεμάχια',
-                                'value'         => '',
-                                'label'         => 'Ποσότητα/Τεμάχια',
-                                'disabled'      => false,
-                                'remember_me'   => false,
-                                'add_delete_btn'=> true,
-                                'class'         => ' form-control '
-                            ]); ?>
-                        </div>    
-                    <div class="col form-floating">
-                            
-                            <?= view('components/input_number', [
-                                'name'          => 'buying_price',
-                                'placeholder'   => 'Τιμή αγοράς (€)',
-                                'value'         => '',
-                                'label'         => 'Τιμή αγοράς (€)',
-                                'disabled'      => false,
-                                'remember_me'   => true,
-                                'class'         => ' form-control '
-                            ]); ?>
-
-                        
-                    </div>
-                    
-                    <div class="col form-floating">
-                         <?= view('components/input_number', [
-                            'name'          => 'wholesale_discount',
-                            'class'         => 'input-percentage form-control ',
-                            'placeholder'   => 'Έκπτωση %',
-                            'value'         => '',
-                            'label'         => 'Έκπτωση %',
-                            'min'           => '0',
-                            'max'           => '100',
-                            'disabled'      => false,
-                            'remember_me'   => true,
-
-                        ]);  ?>
-                    </div>
-                    
-                    <div class="col form-floating">
-                        <input type="input" class="form-control text-end " id="sum" name="sum" disabled>
-                        <label for="sum">Σύνολο</label>
-                    </div>
-                </div>
-
-               
-                <hr/>
                 <!-- Save button & clear form -->
                 <div class="row g-3 mb-3">
                     <!-- Save button -->
-                    <div class="col-10 d-grid">
+                    <div class="col d-grid">
                         <button class="btn btn-primary btn-save pt-2 pb-2" type="submit"  value="Submit">
-                            <span class="fs-4"> <i class="bi bi-save2"></i>&nbsp;&nbsp;|&nbsp;&nbsp;Αποθήκευση</span>
+                            <span class="fs-4"> <i class="bi bi-save2"></i>&nbsp;&nbsp;|&nbsp;&nbsp;<span class="save-label">Αποθήκευση</span></span>
+                        </button>
+                    </div>
+
+                    <!-- Add stock button : only for products that exist in the DB -->
+                    <div class="col-4 d-grid d-none" id="addStockCol">
+                        <button class="btn btn-success pt-2 pb-2" type="button" id="btnAddStock">
+                            <span class="fs-4"> <i class="bi bi-box-seam"></i>&nbsp;&nbsp;|&nbsp;&nbsp;Προσθήκη στοκ</span>
                         </button>
                     </div>
 
@@ -316,6 +277,66 @@
 
 </div>
 </div>
+<!-- Add stock (buying) -->
+<div class="modal fade" id="addStockModal" tabindex="-1" aria-labelledby="addStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="addStockModalLabel">Προσθήκη στοκ</h5>
+                    <div class="text-success fw-bold add-stock-product"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col form-floating">
+                        <?=view('components/input_number', [
+                            'name'          => 'quantity',
+                            'placeholder'   => 'Ποσότητα/Τεμάχια',
+                            'label'         => 'Ποσότητα/Τεμάχια',
+                            'disabled'      => false,
+                            'remember_me'   => false,
+                            'class'         => ' form-control '
+                        ]); ?>
+                    </div>
+                    <div class="col form-floating">
+                        <?= view('components/input_number', [
+                            'name'          => 'buying_price',
+                            'placeholder'   => 'Τιμή αγοράς (€)',
+                            'label'         => 'Τιμή αγοράς (€)',
+                            'disabled'      => false,
+                            'remember_me'   => false,
+                            'class'         => ' form-control '
+                        ]); ?>
+                    </div>
+                    <div class="col form-floating">
+                        <?= view('components/input_number', [
+                            'name'          => 'wholesale_discount',
+                            'class'         => 'input-percentage form-control ',
+                            'placeholder'   => 'Έκπτωση %',
+                            'label'         => 'Έκπτωση %',
+                            'min'           => '0',
+                            'max'           => '100',
+                            'disabled'      => false,
+                            'remember_me'   => false,
+                        ]);  ?>
+                    </div>
+                    <div class="col form-floating">
+                        <input type="input" class="form-control text-end " id="sum" name="sum" disabled>
+                        <label for="sum">Σύνολο</label>
+                    </div>
+                </div>
+                <div id="addStockError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Άκυρο</button>
+                <button type="button" class="btn btn-success" id="btnConfirmAddStock"><i class="bi bi-check-lg"></i> OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Barcode generator -->
 <div class="modal fade" id="barcodeModal" tabindex="-1" aria-labelledby="barcodeModalLabel" aria-hidden="true"
      data-generate-url="<?= esc(base_url('supplies/ajaxGenerateBarcode'), 'attr') ?>">
@@ -352,7 +373,7 @@
         event.preventDefault();
         event.stopPropagation();
         
-        let required_fields = [ "#barcode", "#supplier_id_select",  "#brand_id_select",  "#measuring_unit_id_select", "input[name='quantity']", "input[name='description']" ];
+        let required_fields = [ "#barcode", "#supplier_id_select",  "#brand_id_select",  "#measuring_unit_id_select", "input[name='description']" ];
         let submit_form = true;
 
         required_fields.forEach( function ( field ) {
@@ -395,17 +416,28 @@
             dataType: "json",
 
             success: function(serverData) {
-                if ( serverData != "" && serverData != null ) {
-                    show_toast(serverData.success, 'success');
+                if ( serverData.error ) {
+                    show_toast( Object.values(serverData.error).join('<br>'), 'danger' );
+                    return;
                 }
+
+                show_toast(serverData.success, 'success');
+
+                // a new product stays in the form so stock can be added right away
+                if ( serverData.created ) {
+                    __setCurrentProduct ( serverData.product );
+                    __ajaxGetProductLog ( serverData.product.barcode );
+                    return;
+                }
+
                 __clearProductLogs ();
                 __clearProductValues ( true );
-               
+
             },
 
-            error: function(serverData) {
-             
-                show_toast(serverData.error, 'danger');
+            error: function() {
+
+                show_toast('Πρόβλημα με την αποθήκευση του προϊόντος.', 'danger');
              
             }
 
@@ -454,23 +486,101 @@
 
 </script>
 
+<!-- Add stock modal script -->
+<script>
+
+    const addStockModal = bootstrap.Modal.getOrCreateInstance( document.getElementById('addStockModal') );
+
+    function __showAddStockError ( message ) {
+        $("#addStockError").html( message ).toggleClass('d-none', message == '');
+    }
+
+    $("#btnAddStock").on('click', function () {
+        if ( currentProduct == null ) return;
+
+        $(".add-stock-product").text( currentProduct.description );
+        $quantity.val('').removeClass('is-invalid');
+        $buyingPrice.val( SFNumberFunctions._displayNumber(currentProduct.buying_price, 2) );
+        $discount.val( SFNumberFunctions._displayNumber(currentProduct.wholesale_discount, 2) );
+        calculateSum();
+        __showAddStockError('');
+
+        addStockModal.show();
+    });
+
+    $("#addStockModal").on('shown.bs.modal', function () { $quantity.trigger('focus'); });
+
+    $("#btnConfirmAddStock").on('click', function () {
+
+        let quantity = SFNumberFunctions._parseNumber( $quantity.val() );
+        if ( isNaN(quantity) || quantity == 0 ) {
+            $quantity.addClass('is-invalid');
+            __showAddStockError('Η ποσότητα πρέπει να είναι διαφορετική του μηδενός.');
+            return;
+        }
+
+        let $button = $(this).prop('disabled', true);
+
+        $.ajax({
+            type: "POST",
+            url: "<?= base_url('supplies/addStock') ?>",
+            data: {
+                product_id:         currentProduct.id,
+                quantity:           $quantity.val(),
+                buying_price:       $buyingPrice.val(),
+                wholesale_discount: $discount.val(),
+            },
+            dataType: "json",
+
+            success: function ( serverData ) {
+                currentProduct.stock              = serverData.stock;
+                currentProduct.buying_price       = serverData.buying_price;
+                currentProduct.wholesale_discount = serverData.wholesale_discount;
+
+                $("input[name='stock']").val( serverData.stock );
+                $("input[name='show_stock']").val( SFNumberFunctions._displayNumber(serverData.stock, 2) );
+
+                addStockModal.hide();
+                show_toast( serverData.success, 'success' );
+                __ajaxGetProductLog( currentProduct.barcode );
+            },
+
+            error: function ( xhr ) {
+                __showAddStockError( (xhr.responseJSON && xhr.responseJSON.error) || 'Πρόβλημα με την προσθήκη στοκ.' );
+            },
+
+            complete: function () { $button.prop('disabled', false); }
+        });
+    });
+
+    // Enter on the modal = OK
+    $("#addStockModal").on('keydown', 'input', function ( event ) {
+        if ( event.key === 'Enter' ) { event.preventDefault(); $("#btnConfirmAddStock").trigger('click'); }
+    });
+
+</script>
+
 <!-- Fetch product if barcode exists -->
 <script>
     $("input[name='barcode']").on('change',  function ( event ) {
-        
-        event.preventDefault(); 
+
+        event.preventDefault();
         let barcode = $(this).val();
         if ( barcode === '' ) return;
-        
+
         __getProductFromServer (barcode )
-       
-        
+
+
     });
+
+    // typing / generating / deleting a barcode may turn a loaded product into rename mode (scans wait for the lookup)
+    $("input[name='barcode']").on('input', __updateRenameMode );
+    $(".barcode-input-div .btn-delete-barcode").on('click', __updateRenameMode );
 
     $("body").on("click", "#description-modal ul>li>div>a", async function () {
         __clearProductValues ();
-       await __getProductFromServer ( $(this).attr('data-barcode') );
        $("input[name='barcode']").val (  $(this).attr('data-barcode') );
+       await __getProductFromServer ( $(this).attr('data-barcode') );
         $("#description-modal").modal("hide");
     })
 
@@ -489,12 +599,39 @@
         $("select[name='supplier_id']").trigger('change');
         $("select[name='brand_id']").data ('ajaxPopulateList').call($("select[name='brand_id']"), function() {
             $("select[name='brand_id']").val(product.brand_id );
- 
+
         });
+
+        __setCurrentProduct ( product );
+    }
+
+    // The product of the form that exists in the DB (null when new) : stock can be added only to it
+    let currentProduct = null;
+
+    function __setCurrentProduct ( product = null ) {
+        currentProduct = product;
+        $("input[name='id']").val( product ? product.id : '' );
+        $("#addStockCol").toggleClass('d-none', product == null);
+        __updateRenameMode();
+    }
+
+    // A loaded product whose barcode field holds another (unknown) barcode : Save will change its barcode
+    function __updateRenameMode () {
+        let barcode  = $("input[name='barcode']").val();
+        let renaming = currentProduct != null && barcode !== '' && barcode !== currentProduct.barcode;
+
+        $(".rename-description").text( renaming ? currentProduct.description : '' );
+        $(".rename-old-barcode").text( renaming ? currentProduct.barcode : '' );
+        $("#renameNotice").toggleClass('d-none', !renaming);
+
+        $("input[name='barcode']").toggleClass('border-warning border-3', renaming);
+        $(".btn-save").toggleClass('btn-warning', renaming).toggleClass('btn-primary', !renaming);
+        $(".btn-save .save-label").text( renaming ? 'Αλλαγή barcode' : 'Αποθήκευση' );
     }
 
     function __clearProductValues ( clear_all = false ) {
 
+        __setCurrentProduct ();
 
         $('#productForm').find('input, select').each ( function () {
             
@@ -515,20 +652,30 @@
     async function __getProductFromServer (barcode ) {
         
         await $.ajax({
-            url: "<?= base_url('products/ajaxBarcodeSearch/') ?>" + barcode,
+            url: "<?= base_url('products/ajaxBarcodeSearch?barcode=') ?>" + encodeURIComponent( barcode ),
             method: "get",
             dataType: "json",
 
             success: function(serverData) {
-                __clearProductLogs ();
 
-                if ( serverData.data != "" && serverData.data != null ) { 
-                    __fillProductValues ( serverData.data ); 
+                // barcode found : the form is cleared and that product is loaded instead
+                if ( serverData.data != "" && serverData.data != null ) {
+                    __clearProductLogs ();
+                    __clearProductValues ( );
+                    __fillProductValues ( serverData.data );
                     __renderProductLogsFromProductData ( serverData );
+                    return;
                 }
-                else { 
-                    __clearProductValues ( ); 
+
+                // unknown barcode with a loaded product : keep it, Save changes its barcode (rename mode)
+                if ( currentProduct != null ) {
+                    __updateRenameMode ();
+                    return;
                 }
+
+                // unknown barcode, no product loaded : new product
+                __clearProductLogs ();
+                __clearProductValues ( );
             }
         });
     }

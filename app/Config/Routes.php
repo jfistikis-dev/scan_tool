@@ -44,6 +44,7 @@ $routes->post('/sales/ajax-sales-entry', 'SalesController::ajaxNewSalesEntry');
 // ---- purchases routes ---
 $routes->get('/supplies', 'SuppliesController::index');
 $routes->post('/supplies', 'SuppliesController::store');
+$routes->post('/supplies/addStock', 'SuppliesController::addStock');
 $routes->get('/supplies/ajaxGenerateBarcode', 'SuppliesController::ajaxGenerateBarcode');
 $routes->get('/supplies/ajaxSearchList/(:alpha)', 'SuppliesController::ajaxSearchList/$1');
 
@@ -53,7 +54,7 @@ $routes->get('/supplies/ajaxSearchList/(:alpha)', 'SuppliesController::ajaxSearc
 
 // ---- products ---
 $routes->get( '/products', 'ProductController::index'); 
-$routes->get( '/products/ajaxBarcodeSearch/(:any)', 'ProductController::ajaxBarcodeSearch/$1'); 
+$routes->get( '/products/ajaxBarcodeSearch', 'ProductController::ajaxBarcodeSearch'); // ?barcode= (barcodes may contain '/')
 $routes->post('/products/ajaxList', 'ProductController::ajaxList');
 $routes->delete('/products/(:num)', 'ProductController::destroy/$1');
 $routes->get('/products/export', 'ProductController::export');

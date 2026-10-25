@@ -17,9 +17,9 @@ class ProductController extends BaseController
     }
 
 
-    public function ajaxBarcodeSearch ( $barcode ) {
+    public function ajaxBarcodeSearch () {
         
-        $product = (new ProductModel())->getProductByBarcode( $barcode );
+        $product = (new ProductModel())->getProductByBarcode( (string) $this->request->getGet('barcode') );
         
         if ( $product ) {
             $data[ 'data' ] = $product;
@@ -443,6 +443,7 @@ class ProductController extends BaseController
                 $type      = match ((int) $r['type_id']) {
                     PRODUCT_LOG_TYPE_BUYING  => 'Προσθήκη',
                     PRODUCT_LOG_TYPE_SELLING => 'Αφαίρεση',
+                    PRODUCT_LOG_TYPE_UPDATE  => 'Ενημέρωση',
                     default                  => 'Άλλο',
                 };
             }

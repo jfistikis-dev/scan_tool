@@ -58,6 +58,9 @@ class ProductLogModel extends Model
             $data['product_id']     = $product_found['id'];
             $data['type_id']        = $type_of_log;
             $data['old_stock']      = $last_log_found == null ? 0 : $last_log_found['new_stock'];
+            if ( $type_of_log == PRODUCT_LOG_TYPE_UPDATE ) {
+                $data['old_stock']  = $product_found['stock'];   // details changed, stock did not
+            }
             $data['new_stock']      = $product_found['stock'];   // product is already saved, so its DB stock is the updated one (old stock + quantity)
             $data['group_uid']      = date('Ymd_His') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 5);
 
