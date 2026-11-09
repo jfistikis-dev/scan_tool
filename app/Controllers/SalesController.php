@@ -45,45 +45,59 @@ class SalesController extends BaseController
     }
 
 	public function store () {
-        
-        $validation         = service('validation');
 
-        // first validate the products[x] array
-        if ( !$this->validate([
-            'products' => 'required|is_array'
-        ]) ) {
-            return $this->response->setJSON( ['error' => $validation->getErrors()] );
-        }  
-        
-        // checkin at least one product exists
-        $products = $this->request->getPost('products'); // ή getJSON(true) αν στέλνουν JSON
-        if (! is_array($products) || count($products) < 1) {
-            $this->response->setJSON( ['error' => $validation->getErrors()] );
+        // The basket is sent as a JSON body: { products: [ {id, quantity, price}, ... ] }
+        // (JSON is not subject to PHP's max_input_vars limit, unlike form-encoded posts)
+        $basket_products = $this->request->getJSON(true)['products'] ?? null;
+
+        if ( !is_array($basket_products) || count($basket_products) < 1 ) {
+            return $this->response->setJSON( ['error' => true, 'message' => 'Το καλάθι είναι άδειο.'] );
         }
 
         $productModel       = new ProductModel();
         $productLogModel    = new ProductLogModel();
-        $basket_products    = $this->request->getPost( "products");
         $group_uid          = date('Ymd_His') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 5);
 
+        $db = \Config\Database::connect();
+        $db->transBegin();
 
-        // Updating product's stock && create a sales history
-        foreach ($basket_products as $product ) {
-            $productModel->set( 'stock', $product['data']['stock'] - $product['basketQuantity'] )->where('id', $product['data']['id'] )->update();
-            
+        // Updating product's stock && create a sales history.
+        // Stock / brand / supplier / unit are read from the DB, not from the browser,
+        // so a stale page can't overwrite a newer stock value.
+        foreach ($basket_products as $item ) {
+            $product = $productModel->find( (int) ($item['id'] ?? 0) );
+
+            if ( $product === null ) {
+                $db->transRollback();
+                return $this->response->setJSON( ['error' => true, 'message' => 'Το προϊόν δεν βρέθηκε στην βάση. Η πώληση δεν καταχωρήθηκε.'] );
+            }
+
+            $quantity  = (string) (float) ($item['quantity'] ?? 0);
+            $old_stock = (string) $product['stock'];
+            $new_stock = bcsub( $old_stock, $quantity, 2 );
+
+            $productModel->update( $product['id'], [ 'stock' => $new_stock ] );
+
             $productLogModel->insert([
                 'type_id'           => PRODUCT_LOG_TYPE_SELLING,
-                'measuring_unit_id' => $product['data']['measuring_unit_id'],
-                'brand_id'          => $product['data']['brand_id'],
-                'supplier_id'       => $product['data']['supplier_id'],
-                "product_id"        => $product['data']['id'],
-                "quantity"          => $product['basketQuantity'],
-                "selling_price"     => $product['basketPrice'],
-                "old_stock"         => $product['data']['stock'],
-                "new_stock"         => $product['data']['stock'] - $product['basketQuantity'],
+                'measuring_unit_id' => $product['measuring_unit_id'],
+                'brand_id'          => $product['brand_id'],
+                'supplier_id'       => $product['supplier_id'],
+                "product_id"        => $product['id'],
+                "quantity"          => $quantity,
+                "selling_price"     => (float) ($item['price'] ?? 0),
+                "old_stock"         => $old_stock,
+                "new_stock"         => $new_stock,
                 "group_uid"         => $group_uid
             ]);
         }
+
+        if ( $db->transStatus() === false ) {
+            $db->transRollback();
+            return $this->response->setJSON( ['error' => true, 'message' => lang('Notification.title_error')] );
+        }
+
+        $db->transCommit();
         return  $this->response->setJSON( [ 'success' => lang('Notification.title_save_success') ] );
 
     }

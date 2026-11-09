@@ -385,20 +385,30 @@
 
         // save basket
         $("body").on( "click", ".btn-save-basket", async function () {
-            
+
+            // Send only what the server needs. Posting the full product objects
+            // (html, product logs, ...) explodes into thousands of form fields
+            // and hits PHP's max_input_vars limit after a few items.
+            let products = basketProductList.map( product => ({
+                id:       product.data.id,
+                quantity: product.basketQuantity,
+                price:    product.basketPrice
+            }));
 
             await $.ajax({
                 method: "POST",
-                url: "sales",  
-                data: { products: basketProductList },
+                url: "sales",
+                contentType: "application/json",
+                data: JSON.stringify({ products: products }),
                 dataType: "json",
                 success: function (serverData) {
+                    // keep the basket on error, so the sale can be retried
+                    if ( serverData.error ) { return show_toast(serverData.message, "error"); }
+
                     __clearBasket ();
                     __clearProductLogs ();
+                    show_toast(serverData.success, "success");
 
-                    if ( serverData.error ) { return show_toast(serverData.message, "error"); }
-                    else { show_toast(serverData.success, "success");  }
-                    
                     $(':focus').blur();
                 }
 
